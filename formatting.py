@@ -1,31 +1,31 @@
 import numpy as np
 
 
-def format_args_check(**args):
+def format_args_check(**kwargs):
     """
     Check types of parameters used in `format_arr`, 'format_list' and 
     'format_dict' functions.
 
     """
 
-    if 'depth' in args and not isinstance(args['depth'], int):
+    if 'depth' in kwargs and not isinstance(kwargs['depth'], int):
         raise ValueError('`depth` must be an integer.')
 
-    if 'indent' in args and not isinstance(args['indent'], str):
+    if 'indent' in kwargs and not isinstance(kwargs['indent'], str):
         raise ValueError('`indent` must be a string.')
 
-    if 'col_delim' in args and not isinstance(args['col_delim'], str):
+    if 'col_delim' in kwargs and not isinstance(kwargs['col_delim'], str):
         raise ValueError('`col_delim` must be a string.')
 
-    if 'row_delim' in args and not isinstance(args['row_delim'], str):
+    if 'row_delim' in kwargs and not isinstance(kwargs['row_delim'], str):
         raise ValueError('`row_delim` must be a string.')
 
-    if 'dim_delim' in args and not isinstance(args['dim_delim'], str):
+    if 'dim_delim' in kwargs and not isinstance(kwargs['dim_delim'], str):
         raise ValueError('`dim_delim` must be a string.')
 
-    if 'assign' in args:
+    if 'assign' in kwargs:
 
-        if not isinstance(args['assign'], str):
+        if not isinstance(kwargs['assign'], str):
             raise ValueError('`assign` must be a string.')
 
 
