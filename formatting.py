@@ -83,7 +83,7 @@ def format_arr(arr, depth=0, indent='\t', col_delim='\t', row_delim='\n',
     return out
 
 
-def format_list(lst, depth=0, indent='\t', assign='='):
+def format_list(lst, depth=0, indent='\t', assign='=', arr_kw=None):
     """
     Get a string representation of a nested list, formatted with indents.
 
@@ -99,12 +99,18 @@ def format_list(lst, depth=0, indent='\t', assign='='):
         equal to (`indent` * `depth`).
     assign : str, optional
         The string used to represent the assignment operator.
+    arr_kw : dict, optional
+        Array-specific keyword arguments to be passed to `format_arr`. (See 
+        `format_arr`)
 
     Returns
     -------
     str
 
     """
+
+    if arr_kw is None:
+        arr_kw = {}
 
     format_args_check(depth=depth, ident=indent, assign=assign)
 
@@ -115,17 +121,17 @@ def format_list(lst, depth=0, indent='\t', assign='='):
     for elem in lst:
         if isinstance(elem, dict):
             out += (indent * depth) + '{\n' + \
-                format_dict(elem, depth + 1, indent, assign) + \
+                format_dict(elem, depth + 1, indent, assign, arr_kw) + \
                 (indent * depth) + '}\n\n'
 
         elif isinstance(elem, list):
             out += (indent * depth) + '[\n' + \
-                format_list(elem, depth + 1, ident, assign) + \
+                format_list(elem, depth + 1, ident, assign, arr_kw) + \
                 (indent * depth) + ']\n\n'
 
         elif isinstance(elem, np.ndarray):
             out += (indent * depth) + '*[\n' + \
-                format_arr(elem, depth + 1) + \
+                format_arr(elem, depth + 1, indent, **arr_kw) + \
                 (indent * depth) + ']\n\n'
 
         elif isinstance(elem, (int, float, str)):
@@ -137,7 +143,7 @@ def format_list(lst, depth=0, indent='\t', assign='='):
     return out
 
 
-def format_dict(d, depth=0, indent='\t', assign='='):
+def format_dict(d, depth=0, indent='\t', assign='=', arr_kw=None):
     """
     Get a string representation of a nested dict, formatted with indents.
 
@@ -153,12 +159,18 @@ def format_dict(d, depth=0, indent='\t', assign='='):
         equal to (`indent` * `depth`).
     assign : str, optional
         The string used to represent the assignment operator.
+    arr_kw : dict, optional
+        Array-specific keyword arguments to be passed to `format_arr`. (See 
+        `format_arr`)
 
     Returns
     -------
     str
 
     """
+
+    if arr_kw is None:
+        arr_kw = {}
 
     format_args_check(depth=depth, indent=indent, assign=assign)
 
@@ -170,17 +182,17 @@ def format_dict(d, depth=0, indent='\t', assign='='):
 
         if isinstance(v, dict):
             out += (indent * depth) + '{} '.format(k) + assign + ' {\n' + \
-                format_dict(v, depth + 1, indent, assign) + \
+                format_dict(v, depth + 1, indent, assign, arr_kw) + \
                 (indent * depth) + '}\n\n'
 
         elif isinstance(v, list):
             out += (indent * depth) + '{} '.format(k) + assign + ' [\n' + \
-                format_list(v, depth + 1, indent, assign) + \
+                format_list(v, depth + 1, indent, assign, arr_kw) + \
                 (indent * depth) + ']\n\n'
 
         elif isinstance(v, np.ndarray):
             out += (indent * depth) + '{} '.format(k) + assign + ' *[\n' + \
-                format_arr(v, depth + 1) + \
+                format_arr(v, depth + 1, indent, **arr_kw) + \
                 (indent * depth) + ']\n\n'
 
         elif isinstance(v, (int, float, str)):
