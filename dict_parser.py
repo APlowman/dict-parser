@@ -16,12 +16,16 @@ def get_from_dict(d, address, is_idx, default=None):
     is_idx : list of bool of length n
         List denoting whether the corresponding address element is a (list or
         array) index (True) or a dict key (False).
-    default : 
+    default :
         Object to return if address does not resovle.
 
     Returns
     -------
     object
+
+    See also
+    --------
+    set_in_dict
 
     """
 
@@ -68,78 +72,109 @@ def get_from_dict(d, address, is_idx, default=None):
     return subobj
 
 
-def set_in_list(a, idx, val):
+def set_in_list(lst, idx, val):
     """
-        Set an element to value `val` in a nested list `a`. The position
-        of the element to set is given by the list `idx`.
+    Set an element in a nested list of any depth.
 
-        Example:
+    Parameters
+    ----------
+    lst : list
+        Nested list to be modified.
+    idx : list of int
+        Indices of the list, defining the position of the element to be
+        modified. Each list element in `idx` correpsonds to an additional
+        nesting depth.
 
-        `a` = [[1, 2], [3, [4, 5], 6], [7]]
-        `idx` = [1,1,0]
-        `val` = 9
+    Returns
+    -------
+    None
 
-        ==> `a` = [[1, 2], [3, [9, 5], 6], [7]]
+    Examples
+    --------
+    >>> a = [[1, 2], [3, [4, 5], 6], [7], 8]
+    >>> set_in_list(a, [1, 1, 0], -99)
+    >>> a
+    [[1, 2], [3, [-99, 5], 6], [7], 8]
 
     """
 
     for i in range(len(idx) - 1):
+        lst = lst[idx[i]]
 
-        a = a[idx[i]]
-
-    a[idx[-1]] = val
+    lst[idx[-1]] = val
 
 
 def get_consec_arr_row_idx(shape):
     """
-        Given Numpy array shape given by the tuple `shape`,
-        return an array of row vectors, each of which represent the 
-        indices along each dimension of consecutive rows of the array
-        (i.e. the number of columns in return array is len(shape) - 1).
+    Get the indices for consecutive rows (innermost subarrays) of an array.
 
-        Example:
+    Parameters
+    ----------
+    shape : tuple of length n
+        Shape of the array for which indices should be returned.
 
-            `shape` = (2,3,2)
+    Returns
+    -------
+    ndarray
+        Array of row vectors with n - 1 columns
 
-        returns:
-
-            [[0 0]
-             [0 1]
-             [0 2]
-             [1 0]
-             [1 1]
-             [1 2]]        
+    Examples
+    --------
+    >>> get_consec_arr_row_idx((2, 3, 2))
+    [[0 0]
+     [0 1]
+     [0 2]
+     [1 0]
+     [1 1]
+     [1 2]]
 
     """
 
+    ndim = len(shape)
     idx_col = []
-    cum_prod = [np.prod(shape[len(shape) - i - 1:-1])
-                for i in range(len(shape))]
+    cum_prod = [np.prod(shape[ndim - i - 1:-1]) for i in range(ndim)]
 
-    for i_idx, i in enumerate(range(len(shape) - 2, -1, -1)):
+    for i_idx, i in enumerate(range(ndim - 2, -1, -1)):
 
         num_tiles = cum_prod[-1] / cum_prod[i_idx + 1]
-        idx_col.append(np.tile(
-            np.repeat(
-                np.arange(shape[i]),
-                cum_prod[i_idx]),
-            int(num_tiles))[:, np.newaxis])
+        idx_col.append(np.tile(np.repeat(np.arange(shape[i]), cum_prod[i_idx]),
+                               int(num_tiles))[:, np.newaxis])
 
     idx_all = np.hstack(idx_col)[:, ::-1]
 
     return idx_all
 
 
-def set_in_dict(obj, address, is_idx, val):
+def set_in_dict(d, address, is_idx, val):
+    """
+    Set an object in a dict given an address.
+
+    Parameters
+    ----------
+    d : dict
+        Dict containing other nested dicts, lists and Numpy arrays.
+    address : list of length n
+        List representing the address of the object to set in the dict. If an
+        element in this list is `None`, `val` will be appended to the list.
+    is_idx : list of bool of length n
+        List denoting whether the corresponding address element is a (list or
+        array) index (True) or a dict key (False).
+    val
+        Object to set in dict `d` at address given by `address`.
+
+    Returns
+    -------
+    dict
+        A modified copy of the original dict.
+
+    See also
+    --------
+    get_from_dict
+
     """
 
-    Can append list elements with setting `address` element to be `None`
-    Do not concatenate array elements.
-
-    """
-
-    orig_obj = copy.deepcopy(obj)
-    obj = val
+    orig_d = copy.deepcopy(d)
+    d = val
     idx = len(address) - 1
 
     while idx >= 0:
@@ -160,15 +195,12 @@ def set_in_dict(obj, address, is_idx, val):
         if nested_idx_num > 0:
 
             # Retrieve subobj:
-            subobj = get_from_dict(
-                orig_obj, address[:idx + 1], is_idx[:idx + 1])
+            subobj = get_from_dict(orig_d, address[:idx + 1], is_idx[:idx + 1])
 
             subsubobj = None
-
             if address[idx + nested_idx_num] == None:
 
                 # Last element in address is None => need to append (list)
-
                 subsubobj = subobj
 
                 for subidx in range(idx + 1, idx + nested_idx_num):
@@ -182,39 +214,56 @@ def set_in_dict(obj, address, is_idx, val):
                 address[idx + nested_idx_num] = new_idx
 
             set_in_list(
-                subobj, address[idx + 1: idx + 1 + nested_idx_num], obj)
+                subobj, address[idx + 1: idx + 1 + nested_idx_num], d)
 
-            obj = subobj
+            d = subobj
 
-        subobj = {address[idx]: obj}
-
-        obj = copy.deepcopy(get_from_dict(
-            orig_obj, address[:idx], is_idx[:idx]))
-
-        obj = {k: v for k, v in obj.items() if k != address[idx]}
-        obj.update(subobj)
-
+        subobj = {address[idx]: d}
+        d = copy.deepcopy(get_from_dict(orig_d, address[:idx], is_idx[:idx]))
+        d = {k: v for k, v in d.items() if k != address[idx]}
+        d.update(subobj)
         idx -= 1
 
-    return obj
+    return d
 
 
 def parse_string_as(val, data_type):
-    """ 
-        Parse a string as int, float, bool or string. Floats may be expressed 
-        as a string like "34/2.3"
+    """
+    Parse a string as an `int`, `float`, or `bool`.
+
+    Parameters
+    ----------
+    val : str
+        String to be parsed. If a value is to be parsed as a float, strings
+        like '34/2.3' allowed.
+    data_type : type
+        One of `int`, `float`, `bool` or `str`.
+
+    Returns
+    -------
+    parsed val
+
+    Examples
+    --------
+    >>> parse_string_as('2.5/0.5', float)
+    5.0
 
     """
+
+    bool_strs = {
+        True: ['TRUE', 'YES', '1', '1.0'],
+        False: ['FALSE', 'NO', '0', '0.0']
+    }
+
     if isinstance(val, str):
 
         try:
-
             parsed_val = False
 
             if data_type is object or data_type is str:
                 parsed_val = val
 
-            elif data_type == int:
+            elif data_type is int:
                 parsed_val = int(val)
 
             elif data_type is float:
@@ -222,22 +271,19 @@ def parse_string_as(val, data_type):
                 if "/" in val:
                     num, den = val.split("/")
                     parsed_val = float(num) / float(den)
-
                 else:
                     parsed_val = float(val)
 
             elif data_type is bool:
 
-                if val.upper() in ['TRUE', 'YES', '1', '1.0']:
+                v_up = val.upper()
+                if v_up in bool_strs[True]:
                     parsed_val = True
-
-                elif val.upper() in ['FALSE', 'NO', '0', '0.0']:
+                elif v_up in bool_strs[False]:
                     parsed_val = False
-
                 else:
                     raise ValueError(
                         'Cannot parse string {} as type bool'.format(val))
-
             else:
                 raise ValueError(
                     'Cannot parse string {} as type {}'.format(val, data_type))
@@ -252,9 +298,63 @@ def parse_string_as(val, data_type):
                          'string.'.format(val))
 
 
+def parse_dict_file(path):
+    """
+    Parse a text file as a dict containing nested dicts, lists and Numpy
+    arrays.
+
+    Parameters
+    ----------
+    path : str
+        File path of a text file whose contents represents nested dicts, lists
+        and Numpy arrays according to a particular syntax.
+
+    Returns
+    -------
+    dict
+
+    """
+
+    with open(path, mode='r', encoding='utf-8') as f:
+        lines = f.read()
+
+    return parse_dict_str(lines)
+
+
 def parse_dict_str(s):
     """
     Parse a string as a dict containing nested dicts, lists and Numpy arrays.
+
+    Parameters
+    ----------
+    s : str
+        A string representing nested dicts, lists and Numpy arrays according
+        to a particular syntax.
+
+    Returns
+    -------
+    dict
+
+    Examples
+    --------
+    Note in the below example, the triple-quotes had to be escaped:
+
+    >>> s = \"""a = {
+    ... a1 = 2
+    ... a2 = [
+    ...     1
+    ...     2
+    ...     ]
+    ... a3 = {
+    ...     x = 20
+    ...     y = 30
+    ...     z = 40
+    ...     }
+    ... }\"""
+
+    TODO:
+    -   Investigate refactoring some of the repeated code in the two main
+        loops.
 
     """
 
@@ -273,19 +373,16 @@ def parse_dict_str(s):
 
     ln_s = s.split('\n')
 
-    out = {}
-    address = []
-    is_idx = []
-
     OPEN_OBJ_DEF = {
         '[': [],
         '{': {}
     }
 
-    ARR_DTYPES_DEF = {
+    DTYPES_DEF = {
         'int': int,
         'float': float,
-        'bool': bool
+        'bool': bool,
+        'str': str
     }
 
     # Loop through lines twice, first pass to get shape of any arrays,
@@ -294,8 +391,8 @@ def parse_dict_str(s):
     arr_shapes = []
     arr_dtypes = []
     cur_arr_consec_blocks = []
-    cur_arr_consec_blanks = []
-    parse_consec_blanks = False
+    cur_arr_consec_empties = []
+    parse_consec_empties = False
     parse_consec_blocks = False
     arr_start = False
     parse_arr_shape = False
@@ -310,11 +407,17 @@ def parse_dict_str(s):
             dtype_str = None
 
             if DTYPE_OPEN in v and DTYPE_CLOSE in v:
-                dtype_str, v = v.split(DTYPE_OPEN)[1].split(DTYPE_CLOSE)
+                dtype_str, v_2 = v.split(DTYPE_OPEN)[1].split(DTYPE_CLOSE)
+
+                if DTYPES_DEF.get(dtype_str, None) is None:
+                    dtype_str = None
+
+                else:
+                    v = v_2
 
             if v == ARR_OPEN:
                 arr_start = True
-                arr_dtypes.append(ARR_DTYPES_DEF.get(dtype_str, None))
+                arr_dtypes.append(DTYPES_DEF.get(dtype_str, None))
 
         elif ln == ARR_OPEN:
             arr_start = True
@@ -337,16 +440,15 @@ def parse_dict_str(s):
             # The inner two dimensions are already computed.
 
             cur_arr_shape = []
-
-            if len(cur_arr_consec_blanks) > 0:
+            if len(cur_arr_consec_empties) > 0:
 
                 # Get max number of consecutive blank lines:
-                max_blanks = max(cur_arr_consec_blanks)
+                max_blanks = max(cur_arr_consec_empties)
                 num_i = 1
 
                 for i in range(max_blanks, 0, -1):
 
-                    if i not in cur_arr_consec_blanks:
+                    if i not in cur_arr_consec_empties:
 
                         raise ValueError(
                             'Malformed array on line number {}: '
@@ -354,14 +456,14 @@ def parse_dict_str(s):
                             'but there are no blocks separated by {} blank '
                             'lines.'.format(ln_idx, max_blanks, i))
 
-                    num_i = 1 + (cur_arr_consec_blanks.count(i) / num_i)
+                    num_i = 1 + (cur_arr_consec_empties.count(i) / num_i)
                     cur_arr_shape.append(int(num_i))
 
             cur_arr_shape.extend(cur_arr_consec_blocks[0])
             arr_shapes.append(tuple(cur_arr_shape))
 
             cur_arr_consec_blocks = []
-            cur_arr_consec_blanks = []
+            cur_arr_consec_empties = []
             parse_consec_blocks = False
 
         if arr_start:
@@ -372,12 +474,12 @@ def parse_dict_str(s):
         if parse_arr_shape:
 
             if ln == '':
-                if not parse_consec_blanks:
-                    parse_consec_blanks = True
-                    cur_arr_consec_blanks.append(1)
+                if not parse_consec_empties:
+                    parse_consec_empties = True
+                    cur_arr_consec_empties.append(1)
 
                 else:
-                    cur_arr_consec_blanks[-1] += 1
+                    cur_arr_consec_empties[-1] += 1
 
                 if parse_consec_blocks:
                     parse_consec_blocks = False
@@ -385,8 +487,8 @@ def parse_dict_str(s):
             else:
                 width = len(ln.split())
 
-                if parse_consec_blanks:
-                    parse_consec_blanks = False
+                if parse_consec_empties:
+                    parse_consec_empties = False
 
                 if not parse_consec_blocks:
                     parse_consec_blocks = True
@@ -400,29 +502,34 @@ def parse_dict_str(s):
                         raise ValueError(
                             'Malformed array on line number {}. Expected {} '
                             'columns, but found {}.'.format(
-                                ln_idx, prev_width, width))
+                                ln_idx + 1, prev_width, width))
 
     arr_row_idx = [get_consec_arr_row_idx(i) for i in arr_shapes]
 
+    # arr_idx is the index of the arrays whose shapes have been found
+    # arr_ln_idx is the index of the row (innermost dimensions) within an array
+    arr_idx = -1
+    is_arr = False
+    arr_ln_idx = -1
+
     depth_change = 1
     new_is_idx_elm = False
-    arr_ln_idx = -1
-    is_arr = False
-    arr_idx = -1
     dtype_str = None
+    out = {}
+    address = []
+    is_idx = []
 
     # Second loop, to parse data:
-    for ln in ln_s:
+    for ln_idx, ln in enumerate(ln_s):
 
         ln = ln.strip()
 
         if ln == '':
             continue
 
-        k, v, idx = None, None, None
-        open_obj, open_str = None, None
+        k, v, open_obj, open_str = None, None, None, None
 
-        # Set the line type:
+        # Set the line type: ASSIGN_OPEN, ASSIGN, OPEN, CLOSE or VALUE
         if ASSIGN_SYM in ln:
 
             dtype_str = None
@@ -430,7 +537,13 @@ def parse_dict_str(s):
             k, v = [i.strip() for i in ln.split(ASSIGN_SYM)]
 
             if DTYPE_OPEN in v and DTYPE_CLOSE in v:
-                dtype_str, v = v.split(DTYPE_OPEN)[1].split(DTYPE_CLOSE)
+                dtype_str, v_2 = v.split(DTYPE_OPEN)[1].split(DTYPE_CLOSE)
+
+                if DTYPES_DEF.get(dtype_str, None) is None:
+                    dtype_str = None
+
+                else:
+                    v = v_2
 
             if any([v == i for i in ALL_OPEN]):
                 ln_type = 'ASSIGN_OPEN'
@@ -455,10 +568,15 @@ def parse_dict_str(s):
         # Parse data on line:
         if ln_type == 'CLOSE':
 
-            address = address[:-arr_row_idx[arr_idx].shape[1]]
-            is_idx = is_idx[:-arr_row_idx[arr_idx].shape[1]]
-            is_arr = False
-            arr_ln_idx = -1
+            if is_arr:
+                address = address[:-arr_row_idx[arr_idx].shape[1]]
+                is_idx = is_idx[:-arr_row_idx[arr_idx].shape[1]]
+                is_arr = False
+                arr_ln_idx = -1
+
+            else:
+                address = address[:-1]
+                is_idx = is_idx[:-1]
 
         else:
 
@@ -467,13 +585,15 @@ def parse_dict_str(s):
                 new_address_elem = k
 
             elif ln_type in ['OPEN', 'VALUE']:
-                new_address_elem = idx
+                # set_in_dict appends list element for address element `None`:
+                new_address_elem = None
 
             # Set new address element:
             if depth_change == 0:
                 address[-1] = new_address_elem
 
-            elif depth_change == 1:
+            elif depth_change == 1 and not is_arr:
+                # For an array, we deal with address and is_idx later:
                 address.append(new_address_elem)
                 is_idx.append(new_is_idx_elm)
 
@@ -489,9 +609,8 @@ def parse_dict_str(s):
 
                 if dtype_str is None:
                     set_val = v
-
                 else:
-                    set_val = parse_string_as(v, ARR_DTYPES_DEF[dtype_str])
+                    set_val = parse_string_as(v, DTYPES_DEF[dtype_str])
 
             elif ln_type == 'VALUE':
                 set_val = v
@@ -502,8 +621,8 @@ def parse_dict_str(s):
             if open_str == ARR_OPEN:
 
                 arr_idx += 1
-                set_val = np.zeros(
-                    arr_shapes[arr_idx], dtype=arr_dtypes[arr_idx])
+                set_val = np.zeros(arr_shapes[arr_idx],
+                                   dtype=arr_dtypes[arr_idx])
                 is_arr = True
 
             if is_arr:
@@ -514,15 +633,12 @@ def parse_dict_str(s):
                     set_val = [i for i in set_val.split()]
 
                     if arr_ln_idx == 0:
-                        address = address[:-1] + \
-                            list(arr_row_idx[arr_idx][arr_ln_idx])
-                        is_idx = is_idx[:-1] + [True, ] * \
-                            arr_row_idx[arr_idx].shape[1]
+                        address += list(arr_row_idx[arr_idx][arr_ln_idx])
+                        is_idx += [True, ] * arr_row_idx[arr_idx].shape[1]
 
                     else:
                         address[-arr_row_idx[arr_idx].shape[1]:] = list(
                             arr_row_idx[arr_idx][arr_ln_idx])
-
                         is_idx[-arr_row_idx[arr_idx].shape[1]:] = [
                             True, ] * arr_row_idx[arr_idx].shape[1]
 
@@ -531,6 +647,9 @@ def parse_dict_str(s):
             out = set_in_dict(out, address, is_idx, set_val)
 
             # For the next line:
-            new_is_idx_elm = True if open_str == LIST_OPEN else False
+            if open_str in [LIST_OPEN, ARR_OPEN]:
+                new_is_idx_elm = True
+            else:
+                new_is_idx_elm = False
 
     return out
