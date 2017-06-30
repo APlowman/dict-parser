@@ -1,47 +1,45 @@
 import numpy as np
 import copy
+import formatting
 
 
-def get_indices(l, to_find):
-    """ Find the indices of a given element in a list."""
+def get_from_dict(d, address, is_idx, default=None):
+    """
+    Retrive an object from a dict given an address.
 
-    return [idx for idx, i in enumerate(l) if to_find == i]
+    Parameters
+    ----------
+    d : dict
+        Dict containing other nested dicts, lists and Numpy arrays.
+    address : list of length n
+        List representing the address of the object to retrieve in the dict.
+    is_idx : list of bool of length n
+        List denoting whether the corresponding address element is a (list or
+        array) index (True) or a dict key (False).
+    default : 
+        Object to return if address does not resovle.
 
-
-def get_from_dict(obj, address, is_idx, default=None):
-    """   
-        Get a sub-object from object `obj` with key/index hierarchy provided as
-        a list `address`.
-
-        `obj` is a dict with arbitrarily-nested sub-objects consisting of:
-            - lists
-            - dicts
-            - Numpy arrays
-
-        `is_idx` is a boolean list of the same length as `address` which
-        indicates whether each element in `address` represents a list (or 
-        array) index (otherwise it is a dict key).
-
-        Returns `default` if the address does not resolve, else returns
-        resolved sub-object.
+    Returns
+    -------
+    object
 
     """
 
     if len(address) != len(is_idx):
         raise ValueError(
-            'Length of `address` ({}) and length of `is_idx ({}) '
+            'Length of `address` ({}) and length of `is_idx` ({}) '
             'do not match.'.format(len(address), len(is_idx)))
 
     if not np.all([isinstance(i, bool) for i in is_idx]):
         raise ValueError('`is_idx` must be a list of bools.')
 
-    if not np.all([isinstance(address[i], int)
-                   for i in get_indices(is_idx, True)]):
-
+    if not np.all(
+        [isinstance(address[i], int)
+         for i in [idx for idx, i in enumerate(is_idx) if i == True]]):
         raise ValueError('Elements in `address` which correspond to `True` in '
                          '`is_idx` should be integers.')
 
-    subobj = obj
+    subobj = d
     for (k_idx, k), idx in zip(enumerate(address), is_idx):
 
         if not idx:
