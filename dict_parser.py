@@ -630,7 +630,8 @@ def parse_dict_str(s):
                 if arr_ln_idx >= 0:
 
                     # Parse an array row
-                    set_val = [i for i in set_val.split()]
+                    set_val = [parse_string_as(i, arr_dtypes[arr_idx])
+                               for i in set_val.split()]
 
                     if arr_ln_idx == 0:
                         address += list(arr_row_idx[arr_idx][arr_ln_idx])
