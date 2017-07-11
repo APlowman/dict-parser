@@ -29,6 +29,9 @@ def format_args_check(**kwargs):
     if 'dim_delim' in kwargs and not isinstance(kwargs['dim_delim'], str):
         raise ValueError('`dim_delim` must be a string.')
 
+    if 'format_spec' in kwargs and not isinstance(kwargs['format_spec'], str):
+        raise ValueError('`format_spec` must be a string.')
+
     if 'assign' in kwargs:
 
         if not isinstance(kwargs['assign'], str):
@@ -36,7 +39,7 @@ def format_args_check(**kwargs):
 
 
 def format_arr(arr, depth=0, indent='\t', col_delim='\t', row_delim='\n',
-               dim_delim='\n'):
+               dim_delim='\n', format_spec='{}'):
     """
     Get a string representation of a Numpy array, formatted with indents.
 
@@ -57,6 +60,8 @@ def format_arr(arr, depth=0, indent='\t', col_delim='\t', row_delim='\n',
         Defautl is newline character, \n.
     dim_delim : str, optional
         String to delimit outer dimensions. Default is newline character, \n.
+    format_spec : str, optional
+        Format specifier for the array.
 
     Returns
     -------
@@ -65,7 +70,8 @@ def format_arr(arr, depth=0, indent='\t', col_delim='\t', row_delim='\n',
     """
 
     format_args_check(depth=depth, indent=indent, col_delim=col_delim,
-                      row_delim=row_delim, dim_delim=dim_delim)
+                      row_delim=row_delim, dim_delim=dim_delim,
+                      format_spec=format_spec)
 
     if not isinstance(arr, np.ndarray):
         raise ValueError('Cannot format as array, object is '
@@ -77,14 +83,15 @@ def format_arr(arr, depth=0, indent='\t', col_delim='\t', row_delim='\n',
     if d == 1:
         out += (indent * depth)
         for col in arr:
-            out += '{}'.format(col) + col_delim
+            out += format_spec.format(col) + col_delim
         out += row_delim
 
     else:
         if d > 2:
             dim_seps = dim_delim * (d - 2)
-        out = dim_seps.join([format_arr(i, depth, indent, col_delim,
-                                        row_delim, dim_delim) for i in arr])
+        out = dim_seps.join(
+            [format_arr(i, depth, indent, col_delim,
+                        row_delim, dim_delim, format_spec) for i in arr])
 
     return out
 
