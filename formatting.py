@@ -126,7 +126,7 @@ def format_list(lst, depth=0, indent='\t', assign='=', arr_kw=None):
 
         elif isinstance(elem, list):
             out += (indent * depth) + '[\n' + \
-                format_list(elem, depth + 1, ident, assign, arr_kw) + \
+                format_list(elem, depth + 1, indent, assign, arr_kw) + \
                 (indent * depth) + ']\n\n'
 
         elif isinstance(elem, np.ndarray):
