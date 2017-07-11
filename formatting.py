@@ -1,3 +1,9 @@
+"""
+TODO:
+-   Add option for specifying number of newline characters after each data
+    type. E.g. Do we want a blank line after each dict?
+"""
+
 import numpy as np
 
 
