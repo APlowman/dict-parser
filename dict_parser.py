@@ -417,7 +417,7 @@ def parse_dict_str(s):
 
             if v == ARR_OPEN:
                 arr_start = True
-                arr_dtypes.append(DTYPES_DEF.get(dtype_str, None))
+                arr_dtypes.append(DTYPES_DEF.get(dtype_str, float))
 
         elif ln == ARR_OPEN:
             arr_start = True
