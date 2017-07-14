@@ -374,8 +374,8 @@ def parse_dict_str(s):
     ln_s = s.split('\n')
 
     OPEN_OBJ_DEF = {
-        '[': [],
-        '{': {}
+        LIST_OPEN: [],
+        DICT_OPEN: {}
     }
 
     DTYPES_DEF = {
@@ -403,24 +403,39 @@ def parse_dict_str(s):
         ln = ln.strip()
 
         if ASSIGN_SYM in ln:
+
             k, v = [i.strip() for i in ln.split(ASSIGN_SYM)]
-            dtype_str = None
+            dtype_act, dtype_str = None, None
 
             if DTYPE_OPEN in v and DTYPE_CLOSE in v:
                 dtype_str, v_2 = v.split(DTYPE_OPEN)[1].split(DTYPE_CLOSE)
 
-                if DTYPES_DEF.get(dtype_str, None) is None:
-                    dtype_str = None
-
-                else:
+                dtype_act = DTYPES_DEF.get(dtype_str)
+                if dtype_act is not None:
                     v = v_2
 
             if v == ARR_OPEN:
                 arr_start = True
                 arr_dtypes.append(DTYPES_DEF.get(dtype_str, float))
 
-        elif ln == ARR_OPEN:
-            arr_start = True
+        elif ARR_OPEN in ln:
+
+            dtype_act, dtype_str = None, None
+
+            # Error if dtype is not valid.
+            if DTYPE_OPEN in ln and DTYPE_CLOSE in ln:
+                dtype_str, ln_2 = ln.split(DTYPE_OPEN)[1].split(DTYPE_CLOSE)
+
+                dtype_act = DTYPES_DEF.get(dtype_str)
+                if dtype_act is None:
+                    raise ValueError('Datatype specifier {} not understood for'
+                                     'line number {}: {}'.format(ln_idx, ln))
+                else:
+                    ln = ln_2
+
+            if ln == ARR_OPEN:
+                arr_start = True
+                arr_dtypes.append(DTYPES_DEF.get(dtype_str, float))
 
         elif ln == ARR_CLOSE and parse_arr_shape:
             parse_arr_shape = False
@@ -515,6 +530,7 @@ def parse_dict_str(s):
     depth_change = 1
     new_is_idx_elm = False
     dtype_str = None
+    dtype_act = None
     out = {}
     address = []
     is_idx = []
@@ -532,31 +548,44 @@ def parse_dict_str(s):
         # Set the line type: ASSIGN_OPEN, ASSIGN, OPEN, CLOSE or VALUE
         if ASSIGN_SYM in ln:
 
-            dtype_str = None
+            dtype_act = None
 
             k, v = [i.strip() for i in ln.split(ASSIGN_SYM)]
 
             if DTYPE_OPEN in v and DTYPE_CLOSE in v:
+
                 dtype_str, v_2 = v.split(DTYPE_OPEN)[1].split(DTYPE_CLOSE)
-
-                if DTYPES_DEF.get(dtype_str, None) is None:
-                    dtype_str = None
-
-                else:
+                dtype_act = DTYPES_DEF.get(dtype_str)
+                if dtype_act is not None:
                     v = v_2
 
             if any([v == i for i in ALL_OPEN]):
                 ln_type = 'ASSIGN_OPEN'
                 open_str = v
-                open_obj = OPEN_OBJ_DEF.get(v, None)
+                open_obj = OPEN_OBJ_DEF.get(v)
 
             else:
                 ln_type = 'ASSIGN'
 
-        elif any([ln == i for i in ALL_OPEN]):
+        elif any([i in ln for i in ALL_OPEN]):
+
+            dtype_act = None
+
+            # Remove the dtype if it's there: Error if dtype is not valid.
+            if DTYPE_OPEN in ln and DTYPE_CLOSE in ln:
+
+                dtype_str, ln_2 = ln.split(DTYPE_OPEN)[1].split(DTYPE_CLOSE)
+                dtype_act = DTYPES_DEF.get(dtype_str)
+
+                if dtype_act is None:
+                    raise ValueError('Datatype specifier {} not understood for'
+                                     'line number {}: {}'.format(ln_idx, ln))
+                else:
+                    ln = ln_2
+
             ln_type = 'OPEN'
             open_str = ln
-            open_obj = OPEN_OBJ_DEF.get(ln, None)
+            open_obj = OPEN_OBJ_DEF.get(ln)
 
         elif any([ln == i for i in ALL_CLOSE]):
             ln_type = 'CLOSE'
@@ -607,10 +636,10 @@ def parse_dict_str(s):
             # Set a new value:
             if ln_type == 'ASSIGN':
 
-                if dtype_str is None:
+                if dtype_act is None:
                     set_val = v
                 else:
-                    set_val = parse_string_as(v, DTYPES_DEF[dtype_str])
+                    set_val = parse_string_as(v, dtype_act)
 
             elif ln_type == 'VALUE':
                 set_val = v
